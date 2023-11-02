@@ -68,6 +68,29 @@ async fn get_image(mut payload: Multipart) ->  Result<Json<models::Uploads>, Sta
                     // .first(conn).optional();
                     use models::uploads::dsl::*;
 
+                    use std::process;
+
+
+                    let koi_type: &str = "";
+
+                    match process::Command::new("python").arg("predict.py").arg(format!("{}/{}", IMAGE_FOLDER, file_handle)).output() {
+                        Ok(output) => {
+                            let stderr_string = String::from_utf8(output.stderr).unwrap_or_default();
+                            if let Some(predicted_type) = stderr_string.split("\n").nth(2) {
+                                koi_type = predicted_type;
+                            }
+                        },
+                        Err(c) => println!("{}", c),
+                    }
+                    // match String::from_utf8(cmd.stdout) {
+                    //     Ok(s) => {println!("{}", s);},
+                    //     Err(s) => {println!("{}", s)}
+                    // }
+                    if koi_type.eq("") {
+                        //handle error
+                    }
+
+
                     {
                         let result = uploads.filter(handle.eq(file_handle)).select(models::Uploads::as_select()).first(conn);
                         if let Ok(result) = result {
@@ -142,7 +165,8 @@ async fn main() {
       .route("/", get(root))
       .route("/users", post(create_user))
       .route("/upload", post(get_image))
-
+    
+        .route("/feed-share/:file_handle", get(process::share_to_feed))
       .route("/koi/add/:name", get(admin::add_koi))
 
         .nest("/images", axum_static::static_router("images"))

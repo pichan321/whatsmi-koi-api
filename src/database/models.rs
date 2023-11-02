@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 diesel::table! {
     feed (id) {
-        id -> Int8,
+        id -> Nullable<Int8>,
         caption -> Text,
         upload_id -> Int8
     }
@@ -13,7 +13,7 @@ diesel::table! {
 #[derive(Queryable, Selectable, Insertable, Debug, Clone)]
 #[diesel(table_name = self::feed)]
 pub struct Feed {
-    pub id: i64,
+    pub id: Option<i64>,
     pub caption: String,
     pub upload_id: i64,
 }

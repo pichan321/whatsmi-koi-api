@@ -3,8 +3,6 @@ from keras.utils import load_img, img_to_array
 import numpy as np
 from keras.models import load_model
 import tensorflow as tf
-from type import get_types
-
 # gpu_devices = tf.config.experimental.list_physical_devices('GPU')
 # for device in gpu_devices:
 #     tf.config.experimental.set_memory_growth(device, True)
@@ -12,9 +10,8 @@ from type import get_types
 import sys
 filename = sys.argv[1]
 
-predict = ['Asagi','Bekko','Doitsu Koi','Ghosiki','Goromo','Hikarimoyo','Hikarimuji mono','Hikariutsuri','Kanoko Koi','Kawarimono','Kin/Ginrin','Kohaku','Sanke','Showa','Shusui','Tancho','Utsuri','Yamato Nishiki']
-predict = get_types()
-predict = np.array(predict)
+types = ['Asagi','Bekko','Doitsu Koi','Ghosiki','Goromo','Hikarimoyo','Hikarimuji mono','Hikariutsuri','Kanoko Koi','Kawarimono','Kin/Ginrin','Kohaku','Sanke','Showa','Shusui','Tancho','Utsuri','Yamato Nishiki']
+predict = np.array(types)
 
 # gpu_devices = tf.config.experimental.list_physical_devices('GPU')
 # for device in gpu_devices:
@@ -35,13 +32,7 @@ img = img/255
 # print(model_ANN.predict(img))
 result = np.argmax(model_ANN.predict(img),axis=1)
 
-print(result)
-
-
-types = get_types()
-print(types)
-
-print("Predicted", types[result[0]])
+print(types[result[0]], file=sys.stderr)
 # print(model_ANN.predict(img))
 # print(predict[result])
 
