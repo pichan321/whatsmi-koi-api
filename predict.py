@@ -11,6 +11,7 @@ import sys
 filename = sys.argv[1]
 
 types = ['Asagi','Bekko','Doitsu Koi','Ghosiki','Goromo','Hikarimoyo','Hikarimuji mono','Hikariutsuri','Kanoko Koi','Kawarimono','Kin/Ginrin','Kohaku','Sanke','Showa','Shusui','Tancho','Utsuri','Yamato Nishiki']
+types = ['Aka Bekko', 'Asagi', 'Goshiki', 'Hi Utsuri', 'Ki Bekko', 'Ki Utsuri', 'Kohaku', 'Koromo', 'Orange Ogon', 'Platinum Ogon', 'Sanke', 'Shiro Bekko', 'Shiro Utsuri', 'Showa', 'Shusui', 'Yamabuki Ogon']
 predict = np.array(types)
 
 # gpu_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -32,6 +33,7 @@ img = img/255
 # print(model_ANN.predict(img))
 result = np.argmax(model_ANN.predict(img),axis=1)
 
+# print(result[0])
 print(types[result[0]], file=sys.stderr)
 # print(model_ANN.predict(img))
 # print(predict[result])

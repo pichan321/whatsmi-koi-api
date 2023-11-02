@@ -23,7 +23,7 @@ diesel::table! {
     uploads (id) {
         id -> Nullable<Int8>,
         handle -> Text,
-        koi_id -> Nullable<Int8>
+        koi_id -> Nullable<Int8>,
     }
 }
 

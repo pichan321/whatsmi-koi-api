@@ -1,6 +1,7 @@
-use diesel::{RunQueryDsl, QueryDsl, ExpressionMethods, SelectableHelper};
+use diesel::{RunQueryDsl, QueryDsl, ExpressionMethods, SelectableHelper, OptionalExtension};
 use dotenv::dotenv;
-use whatsmi_koi_api::database::models::{uploads, Uploads};
+use whatsmi_koi_api::database::models::{uploads, Uploads, Kois};
+use std::collections::HashMap;
 use std::{env, fs};
 
 
@@ -17,6 +18,8 @@ use std::io::{Write, BufWriter};
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 use http::Method;
+use serde::{Deserialize, Serialize};
+
 async fn root() -> String {
     "Hello there".to_string()
 } 
@@ -30,8 +33,52 @@ const IMAGE_FOLDER: &str = "images";
 use uuid::Uuid;
 
 
+async fn get_koi_id_from_name(koi_name: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    let conn = &mut connection::get_db();
 
-async fn get_image(mut payload: Multipart) ->  Result<Json<models::Uploads>, StatusCode> {
+    use models::kois::dsl::*;
+    let result: Result<Option<Kois>, _> = kois.filter(name.eq(koi_name)).select(models::Kois::as_select()).first(conn).optional();
+
+    match result {
+        Ok(result) => {
+          if let Some(koi) = result {
+            if let Some(koi_id) = koi.id {
+                return Ok(koi_id);
+            } else {
+                return Err("".into());
+            }
+          } else {
+            return Err("".into());
+          }
+        },
+        Err(err) => {
+            return Err(Box::new(err));
+        },
+    }
+    // match kois::filter(name.eq(koi_name)).select(models::Kois::as_select()).first(conn).optional() {
+    //     Ok(Some(koi)) => {
+    //         Ok(())
+    //     },
+    //     Ok(None) => {
+    //         Ok(())
+    //     },
+    //     Err(err) => {
+    //         Err("".into())
+    //     },
+    // }
+
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UploadsDTO {
+    pub id: Option<i64>,
+    pub handle: String,
+    pub koi_id: i64,
+    pub koi_name: String
+}
+
+
+async fn get_image(mut payload: Multipart) ->  Result<Json<UploadsDTO>, StatusCode> {
     let conn = &mut connection::get_db();
     use whatsmi_koi_api::database::models::uploads::dsl::*;
     while let Some(mut field) = payload.next_field().await.unwrap() {
@@ -71,13 +118,31 @@ async fn get_image(mut payload: Multipart) ->  Result<Json<models::Uploads>, Sta
                     use std::process;
 
 
-                    let koi_type: &str = "";
+           
 
                     match process::Command::new("python").arg("predict.py").arg(format!("{}/{}", IMAGE_FOLDER, file_handle)).output() {
                         Ok(output) => {
-                            let stderr_string = String::from_utf8(output.stderr).unwrap_or_default();
-                            if let Some(predicted_type) = stderr_string.split("\n").nth(2) {
-                                koi_type = predicted_type;
+                            let stderr_string = String::from_utf8(output.stderr).unwrap_or_default().replace("\r", "\n");
+                            if let Some(predicted_type) = &mut stderr_string.split("\n").nth(2) {
+  
+                                    let result: Result<_, _> = uploads.filter(handle.eq(file_handle)).select(models::Uploads::as_select()).first(conn);
+                                    if let Ok(mut Result) = result {
+                         
+                               
+                                        {
+                                     
+                                            let kid: i64 = get_koi_id_from_name(&predicted_type).await.unwrap();
+                                            let response: UploadsDTO = UploadsDTO { 
+                                                id: Result.id, 
+                                                handle: Result.handle, 
+                                                koi_id: kid, 
+                                                koi_name: predicted_type.to_owned().to_string()};
+                                        
+                                            return Ok(Json(response));
+                                        }
+                                    
+                                    }
+              
                             }
                         },
                         Err(c) => println!("{}", c),
@@ -86,18 +151,9 @@ async fn get_image(mut payload: Multipart) ->  Result<Json<models::Uploads>, Sta
                     //     Ok(s) => {println!("{}", s);},
                     //     Err(s) => {println!("{}", s)}
                     // }
-                    if koi_type.eq("") {
-                        //handle error
-                    }
+      
 
-
-                    {
-                        let result = uploads.filter(handle.eq(file_handle)).select(models::Uploads::as_select()).first(conn);
-                        if let Ok(result) = result {
-                            println!("{:#?}", result);
-                            return Ok(Json(result));
-                        }
-                    }
+            
             
 
                 
@@ -119,7 +175,7 @@ async fn get_image(mut payload: Multipart) ->  Result<Json<models::Uploads>, Sta
     // }
 
 
-   Ok(Json(Uploads{ id: None, handle: "asdasd".to_string(), koi_id: None }))
+   Err(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 
