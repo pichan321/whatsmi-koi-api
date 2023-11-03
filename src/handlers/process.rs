@@ -25,17 +25,24 @@ pub async fn share_to_feed(Path(file_handle): Path<String>) -> Result<String, St
                             id: None,
                             caption: "FEED IMAGE CAP".to_string(),
                             upload_id: upload_id_to_add,
-                        }).execute(conn).expect("");
+                        }).execute(conn).expect("Error inserting new feed");
+                        Ok(file_handle)
                     }
-                    _ => (),
+                    _ => {
+                        Err(StatusCode::INTERNAL_SERVER_ERROR)
+                    },
                 }
          
         },
-        Ok(None) => println!("nothing"),
-        Err(_) => println!("default")
+        Ok(None) => {
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        },
+        Err(_) => {
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 
-    Ok(file_handle)
+
 
 
 }

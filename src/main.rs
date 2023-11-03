@@ -1,8 +1,9 @@
-use diesel::{RunQueryDsl, QueryDsl, ExpressionMethods, SelectableHelper, OptionalExtension};
+use diesel::sql_types::BigInt;
+use diesel::{RunQueryDsl, QueryDsl, ExpressionMethods, SelectableHelper, OptionalExtension, JoinOnDsl};
 use dotenv::dotenv;
-use whatsmi_koi_api::database::models::{uploads, Uploads, Kois};
+use whatsmi_koi_api::database::models::{uploads, Uploads, Kois, feed, Feed, kois};
 use std::collections::HashMap;
-use std::{env, fs};
+use std::{env, fs, string};
 
 
 use axum::extract::multipart::MultipartError;
@@ -86,9 +87,6 @@ async fn get_image(mut payload: Multipart) ->  Result<Json<UploadsDTO>, StatusCo
         let file_format = field.file_name().unwrap().split(".").last().unwrap();
         let path = format!("{}/{}.{}", IMAGE_FOLDER.to_string(), filename, file_format);
         
-     
-
-
         let file_handle: &String = &format!("{}.{}", filename, file_format);
        
   
@@ -125,13 +123,19 @@ async fn get_image(mut payload: Multipart) ->  Result<Json<UploadsDTO>, StatusCo
                             let stderr_string = String::from_utf8(output.stderr).unwrap_or_default().replace("\r", "\n");
                             if let Some(predicted_type) = &mut stderr_string.split("\n").nth(2) {
   
-                                    let result: Result<_, _> = uploads.filter(handle.eq(file_handle)).select(models::Uploads::as_select()).first(conn);
+                                    let result: Result<Uploads, _> = uploads.filter(handle.eq(file_handle)).select(models::Uploads::as_select()).first(conn);
                                     if let Ok(mut Result) = result {
                          
                                
                                         {
+
+                                  
                                      
                                             let kid: i64 = get_koi_id_from_name(&predicted_type).await.unwrap();
+
+                                            Result.koi_id = Some(kid.clone());
+                                            diesel::update(uploads).filter(handle.eq(file_handle)).set(Result.clone()).execute(conn);
+
                                             let response: UploadsDTO = UploadsDTO { 
                                                 id: Result.id, 
                                                 handle: Result.handle, 
@@ -178,27 +182,53 @@ async fn get_image(mut payload: Multipart) ->  Result<Json<UploadsDTO>, StatusCo
    Err(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct FeedDTO {
+    pub id: Option<i64>,
+    pub caption: String,
+    pub upload_id: Option<i64>,
+    pub koi_variant: String,
+    pub image: String,
+}
+
+async fn get_images() -> Result<Json<Vec<FeedDTO>>, StatusCode> {
 
 
-async fn get_images() -> Result<Json<Vec<String>>, StatusCode> {
+    // let files = std::fs::read_dir("images");
 
+    // let mut all_files: Vec<String> = Vec::new();
+    // if let Ok(files) = files {
 
-    let files = std::fs::read_dir("images");
+    //     files.into_iter().for_each(|f| {
+    //         if let Ok(file) = f {
+    //             all_files.push(file.path().to_string_lossy().to_string());
+    //         }
+    //     })
+    // }
 
-    let mut all_files: Vec<String> = Vec::new();
-    if let Ok(files) = files {
+    use models::feed::dsl::*;
+    use models::uploads::dsl::*;
+    use models::kois::dsl::*;
+    use diesel::prelude::*;
+    use diesel::sql_types::Nullable;
 
-        files.into_iter().for_each(|f| {
-            if let Ok(file) = f {
-                all_files.push(file.path().to_string_lossy().to_string());
-            }
-        })
-    }
+    let conn = &mut connection::get_db();
     
+    let results: Vec<(Feed, Uploads, Kois)> = feed
+    .inner_join(uploads.on(models::feed::upload_id.nullable().eq(models::uploads::id.nullable())))
+    .inner_join(kois.on(models::uploads::columns::koi_id.eq(models::kois::columns::id)))
+    .select((Feed::as_select(), Uploads::as_select(), Kois::as_select()))
+    .load::<(Feed, Uploads, Kois)>(conn).expect("");    
 
+    let mut feeds: Vec<FeedDTO> = Vec::new();    
 
+    results.iter().for_each(|each| {
+        feeds.push(FeedDTO { id: each.0.id, caption: each.0.caption.clone(), upload_id: each.1.id, koi_variant: each.2.name.clone(), image: format!("{}/{}", IMAGE_FOLDER, each.1.handle) })
+    });
 
-    Ok(Json(all_files))
+        
+    
+    Ok(Json(feeds))
 }
 
 #[tokio::main]
