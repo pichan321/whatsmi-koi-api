@@ -188,6 +188,7 @@ struct FeedDTO {
     pub caption: String,
     pub upload_id: Option<i64>,
     pub koi_variant: String,
+    pub koi_variant_jp: String,
     pub image: String,
 }
 
@@ -214,7 +215,7 @@ async fn get_images() -> Result<Json<Vec<FeedDTO>>, StatusCode> {
 
     let conn = &mut connection::get_db();
     
-    let results: Vec<(Feed, Uploads, Kois)> = feed
+    let mut results: Vec<(Feed, Uploads, Kois)> = feed
     .inner_join(uploads.on(models::feed::upload_id.nullable().eq(models::uploads::id.nullable())))
     .inner_join(kois.on(models::uploads::columns::koi_id.eq(models::kois::columns::id)))
     .select((Feed::as_select(), Uploads::as_select(), Kois::as_select()))
@@ -222,8 +223,8 @@ async fn get_images() -> Result<Json<Vec<FeedDTO>>, StatusCode> {
 
     let mut feeds: Vec<FeedDTO> = Vec::new();    
 
-    results.iter().for_each(|each| {
-        feeds.push(FeedDTO { id: each.0.id, caption: each.0.caption.clone(), upload_id: each.1.id, koi_variant: each.2.name.clone(), image: format!("{}/{}", IMAGE_FOLDER, each.1.handle) })
+    results.iter_mut().for_each(|each| {
+        feeds.push(FeedDTO { id: each.0.id, caption: each.0.caption.clone(), upload_id: each.1.id, koi_variant: each.2.name.clone(), image: format!("{}/{}", IMAGE_FOLDER, each.1.handle), koi_variant_jp: each.2.name_jp.clone()})
     });
 
         

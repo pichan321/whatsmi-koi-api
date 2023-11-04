@@ -48,7 +48,8 @@ pub struct Uploads {
 diesel::table! {
     kois (id) {
         id -> Nullable<Int8>,
-        name -> Text
+        name -> Text,
+        name_jp -> Text
     }
 }
 
@@ -57,5 +58,6 @@ diesel::table! {
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Kois {
     pub id: Option<i64>,
-    pub name: String
+    pub name: String,
+    pub name_jp: String
 }
