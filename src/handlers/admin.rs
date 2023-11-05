@@ -39,6 +39,7 @@ pub async fn add_koi(Path(name_to_add): Path<String>) -> Result<Json<Response>, 
     diesel::insert_into(kois).values(models::Kois{
         id: None,
         name: name_to_add.clone(),
+        name_jp: "".to_string()
     }).execute(conn).expect("Error inserting");
     
     Ok( Json(Response::new(Some("Koi is added.".to_string()),  None)) )

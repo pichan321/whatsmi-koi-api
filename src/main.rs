@@ -1,9 +1,10 @@
+use diesel::expression::is_aggregate::No;
 use diesel::sql_types::BigInt;
 use diesel::{RunQueryDsl, QueryDsl, ExpressionMethods, SelectableHelper, OptionalExtension, JoinOnDsl};
 use dotenv::dotenv;
 use whatsmi_koi_api::database::models::{uploads, Uploads, Kois, feed, Feed, kois};
 use std::collections::HashMap;
-use std::{env, fs, string};
+use std::{env, fs, string, default};
 
 
 use axum::extract::multipart::MultipartError;
@@ -20,6 +21,9 @@ use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 use http::Method;
 use serde::{Deserialize, Serialize};
+
+use models::kois::dsl::*;
+use diesel::prelude::*;
 
 async fn root() -> String {
     "Hello there".to_string()
@@ -56,18 +60,18 @@ async fn get_koi_id_from_name(koi_name: &str) -> Result<i64, Box<dyn std::error:
             return Err(Box::new(err));
         },
     }
-    // match kois::filter(name.eq(koi_name)).select(models::Kois::as_select()).first(conn).optional() {
-    //     Ok(Some(koi)) => {
-    //         Ok(())
-    //     },
-    //     Ok(None) => {
-    //         Ok(())
-    //     },
-    //     Err(err) => {
-    //         Err("".into())
-    //     },
-    // }
+}
 
+async fn get_koi_name_jp(koi_id: &i64) -> Option<String> {
+    let conn = &mut connection::get_db();
+
+    let result: Result<Option<Kois>, diesel::result::Error> = kois.filter(id.eq(koi_id)).select(models::Kois::as_select()).first(conn).optional();
+    match result {
+        Ok(Some(result)) => {
+            return Some(result.name_jp)
+        },
+        default => {return None;}
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,7 +79,8 @@ pub struct UploadsDTO {
     pub id: Option<i64>,
     pub handle: String,
     pub koi_id: i64,
-    pub koi_name: String
+    pub koi_name: String,
+    pub koi_name_jp: Option<String>
 }
 
 
@@ -132,7 +137,7 @@ async fn get_image(mut payload: Multipart) ->  Result<Json<UploadsDTO>, StatusCo
                                   
                                      
                                             let kid: i64 = get_koi_id_from_name(&predicted_type).await.unwrap();
-
+                                            let koi_name_jp = get_koi_name_jp(&kid).await;
                                             Result.koi_id = Some(kid.clone());
                                             diesel::update(uploads).filter(handle.eq(file_handle)).set(Result.clone()).execute(conn);
 
@@ -140,7 +145,9 @@ async fn get_image(mut payload: Multipart) ->  Result<Json<UploadsDTO>, StatusCo
                                                 id: Result.id, 
                                                 handle: Result.handle, 
                                                 koi_id: kid, 
-                                                koi_name: predicted_type.to_owned().to_string()};
+                                                koi_name: predicted_type.to_owned().to_string(),
+                                                koi_name_jp: koi_name_jp 
+                                            };
                                         
                                             return Ok(Json(response));
                                         }
