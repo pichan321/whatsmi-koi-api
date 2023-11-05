@@ -4,4 +4,4 @@
 
 ![Whatsmi KOI](https://i.ibb.co/WGthMdW/readme.png)
 
-![Demo Video](https://github.com/pichan321/whatsmi-koi-client/assets/89434597/2fb218ee-5f9b-4505-b67f-695ae825a6b1)
+https://github.com/pichan321/whatsmi-koi-client/assets/89434597/2fb218ee-5f9b-4505-b67f-695ae825a6b1
